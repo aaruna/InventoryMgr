@@ -77,8 +77,11 @@ Physics.prototype.step = function(dt) {
             this.context.fillRect(0, 0, this.element.width, this.element.height);
         }
 
+        if(this.sand) {
+            this.sand.draw(this.context);
+        }
         this.context.save();
-        this.context.scale(this.scale,this.scale);
+        this.context.scale(this.scale, this.scale);
         while(obj) {
             var body = obj.GetUserData();
             if(body) {  body.draw(this.context); }

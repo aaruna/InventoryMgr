@@ -98,7 +98,13 @@ Body.prototype.draw = function(context) {
                 for(var i=1;i<points.length;i++) {
                     context.lineTo(points[i].x,points[i].y);
                 }
-                context.fill();
+                if(this.details.pattern) {
+                    var pattern = context.createPattern(this.details.pattern, 'repeat');
+                    context.fillStyle = pattern;
+                    context.fill();
+                } else {
+                    context.fill();
+                }
                 break;
             case "block":
                 context.fillRect(-this.details.width/2,

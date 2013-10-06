@@ -1,71 +1,14 @@
 (function createWorld() {
     window.physics = new Physics(document.getElementById('canvas'));
+    physics.sand = new Sand({
+        width: physics.element.width,
+        height: physics.element.height
+    }, physics.scale);
     physics.bgColor = "#000030";
     //physics.debug();
 })();
 
-(function fillSand() {
-    function closeLoop(vertices) {
-        var len = vertices.length,
-            canvas = physics.element,
-            dY = canvas.height / physics.scale;
-        vertices.push({
-            x: vertices[len-1].x,
-            y: dY
-        }, {
-            x: vertices[0].x,
-            y: dY
-        });
-
-        return vertices[len-1];
-    }
-
-    function getSandPattern() {
-        var canvas = physics.element,
-            maxX = canvas.width,
-            minY = canvas.height * 0.1,
-            maxY = canvas.height * 0.4,
-            vX = 0, vY = minY,
-            startX = 0, vertex,
-            resetY = function(dY) {
-                return (canvas.height - dY) / physics.scale;
-            },
-            vertices = [{
-                x: startX,
-                y: resetY(_.random(minY, maxY))
-            }], pairs = [];
-
-        while (vX < maxX) {
-            vX += _.random(15, 25);
-            vY = _.random(minY, maxY);
-
-            //vX = (vX > maxX)? maxX: vX;
-
-            vertex = {
-                x: vX / physics.scale,
-                y: resetY(vY)
-            };
-
-            if(vertices.length < 2) {
-                vertices.push(vertex);
-            } else {
-                var endPt = closeLoop(vertices);
-                pairs.push(vertices);
-                vertices = [endPt];
-            }
-        }
-        if(vertices.length < 2) {
-            vertices.push({
-                x: maxX,
-                y: resetY(_.random(minY, maxY))
-            })
-        }
-        closeLoop(vertices);
-        pairs.push(vertices);
-
-        return pairs;
-    }
-
+(function initialize() {
     (function buildWalls() {
         /*walls*/
         new Body(physics, {
@@ -107,23 +50,6 @@
         /*walls end*/
     })();
 
-    var sandBodies = [];
-    (function buildSand() {
-        var masterSandPattern = getSandPattern()
-        window.x = masterSandPattern;
-        _.each(masterSandPattern, function(vec) {
-            sandBodies.push(new Body(physics, {
-                type: "static",
-                color: "#865006",
-                //color: "#8650"+ _.random(10, 99),
-                shape: "polygon",
-                points: vec,
-                friction: 10,
-                name: "sand"
-            }));
-        });
-    })();
-
     /*physics.element.addEventListener('click', function(e) {
         new Body(physics, {
             shape: "circle",
@@ -136,24 +62,43 @@
         });
     });*/
 
-    function getTankY(x, callback) {
-        physics.getBodyAtPoint(x, 14, function(details) {
-           //console.log(details);
-           callback(details.body.m_userData.details.points[0]);
-        });
+    function getTankY(x) {
+        var rx = x*physics.scale,
+            line = physics.sand.getLineWithX(rx),
+            m = (line.y2 - line.y1) / (line.x2 - line.x1),//Slope
+            py = line.y1 - m * (line.x1 - rx);
+
+        console.log(rx, line, m);
+
+        /*if (Math.abs(m) > .3 && false) {
+            console.log("fixing");
+            var residue = 0.1;
+            if (line.y1 > line.y2) {
+                lastX = line.x1-residue;
+                py = line.y1;
+            } else {
+                lastX = line.x2-residue;
+                py = line.y2;
+            }
+        } */
+        console.log(rx, py);
+        var angle = Math.atan(m);
+        //console.log(angle);
+
+        return py;
     }
 
     var tanks = [],
         colors = ['red', 'green', 'blue', 'yellow', 'pink', 'grey'],
         lastX = 0;
     (function populateTanks() {
-        var count = 5;
-        for(var i=0; i<count; i++) {
-            lastX = lastX+_.random(2, 5);
-            getTankY(lastX, function(point) {
-                console.log(point);
-                tanks.push(new Tank(physics, lastX, point.y, colors[i]));
-            });
+        var count = 5, tankY;
+        for(var i=0; i<=count; i++) {
+            lastX = lastX + _.random(2, 3);
+            //lastX = lastX + 2.4;
+            tankY = getTankY(lastX) / physics.scale;
+            console.log("Y: "+tankY);
+            tanks.push(new Tank(physics, lastX, tankY, colors[i]));
         }
     })();
 
@@ -185,25 +130,26 @@
 })();
 
 function Tank(_physics, x, y, color) {
-    var vertices = [{
-        x: 0,
-        y: 2/10
-    }, {
-        x: 0,
-        y: 1/10
-    }, {
-        x: 1/10,
-        y: 0
-    }, {
-        x: 3/10,
-        y: 0
-    }, {
-        x: 4/10,
-        y: 1/10
-    }, {
-        x: 4/10,
-        y: 2/10
-    }];
+    var denom = 12,
+        vertices = [{
+            x: 0,
+            y: 2/denom
+        }, {
+            x: 0,
+            y: 1/denom
+        }, {
+            x: 1/denom,
+            y: 0
+        }, {
+            x: 3/denom,
+            y: 0
+        }, {
+            x: 4/denom,
+            y: 1/denom
+        }, {
+            x: 4/denom,
+            y: 2/denom
+        }];
 
     this.body = new Body(_physics, {
         shape: "polygon",
@@ -212,6 +158,7 @@ function Tank(_physics, x, y, color) {
         points: vertices,
         color: color,
         angle: 0,
+        type: "static",
         name: "tank"
     });
 
@@ -230,7 +177,7 @@ function Tank(_physics, x, y, color) {
     jointDef.bodyA = this.body.body;
     jointDef.bodyB = this.cannon.body;
 
-    jointDef.localAnchorB = new b2Vec2(-2/10, 0);
+    jointDef.localAnchorB = new b2Vec2(-2/denom, 0);
 
     jointDef.collideConnected = false;
 
