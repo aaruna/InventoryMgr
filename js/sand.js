@@ -1,10 +1,47 @@
 function Sand(dimension) {
-    this.sandPatternImage = new Image();
-    this.sandPatternImage.src = "sand_pattern.png";
-
     this.dimension = dimension;
+
+    this.sandColor = "#9A6500";
+    this.sandSpecleColor = "#653000";
+
+    this._generateSpeclePattern();
+
     this.refresh();
 }
+
+Sand.prototype._generateSpeclePattern = function() {
+    var dimension = this.dimension,
+        maxX = dimension.width,
+        maxY = dimension.height,
+        canvas = $("<canvas>").attr({
+            width: maxX,
+            height: maxY
+        })[0], indexX = 0, indexY = 0,
+        context = canvas.getContext('2d'), randWithin = 10, rX, rY;
+
+    context.save();
+
+    context.fillStyle = this.sandColor;
+    context.fillRect(0, 0, maxX, maxY);
+
+    context.restore();
+
+    context.save();
+
+    for(indexX = 0; indexX <= maxX; indexX+=3) {
+        for(indexY = 0; indexY <= maxY; indexY++) {
+            rX = _.random(indexX, indexX+randWithin);
+            rY = _.random(indexY, indexY+randWithin);
+
+            context.fillStyle = _.random(indexY, 0)%2? this.sandColor: this.sandSpecleColor;
+
+            context.fillRect(rX, rY, 1, 1);
+        }
+    }
+
+    context.restore();
+    this.sandPatternImage = canvas;
+};
 
 Sand.prototype.refresh = function() {
     this.vertices = this.generateSandPattern();
@@ -80,10 +117,12 @@ Sand.prototype.draw = function(context) {
     context.save();
 
     context.beginPath();
-    context.moveTo(vertices[0].x, vertices[0].y);
+    context.moveTo(startVertex.x, startVertex.y);
+
     for(var i=1; i<vertices.length; i++) {
         context.lineTo(vertices[i].x, vertices[i].y);
     }
+
     context.closePath();
 
     pattern = context.createPattern(this.sandPatternImage, 'repeat');
